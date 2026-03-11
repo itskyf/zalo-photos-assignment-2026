@@ -67,6 +67,34 @@ checksum = "sha256:b0dbc7fc5c7d5b5a2e932239fe4c710bdf0305d1006a1753d819b7b2956ec
 url = "https://github.com/jdx/fnox/releases/download/v1.15.1/fnox-x86_64-pc-windows-msvc.zip"
 url_api = "https://api.github.com/repos/jdx/fnox/releases/assets/365349757"
 
+[[tools.pitchfork]]
+version = "2.1.0"
+backend = "aqua:jdx/pitchfork"
+
+[tools.pitchfork."platforms.linux-arm64"]
+checksum = "sha256:76b8c581da524a3a9f9b9b67c42567fc89a8df9f0b87a157cc0e5ac5cbd47117"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.1.0/pitchfork-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools.pitchfork."platforms.linux-arm64-musl"]
+checksum = "sha256:76b8c581da524a3a9f9b9b67c42567fc89a8df9f0b87a157cc0e5ac5cbd47117"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.1.0/pitchfork-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools.pitchfork."platforms.linux-x64"]
+checksum = "sha256:684a722874294394d334e2d26aaeb99a5a2728ff8280a9acb49c07afe2d80b3f"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.1.0/pitchfork-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.pitchfork."platforms.linux-x64-musl"]
+checksum = "sha256:684a722874294394d334e2d26aaeb99a5a2728ff8280a9acb49c07afe2d80b3f"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.1.0/pitchfork-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.pitchfork."platforms.macos-arm64"]
+checksum = "sha256:ddd83dbbe56c4afc71d27c2df9520f6e7ae46863f3de17aa0e7c6f7975c995c0"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.1.0/pitchfork-aarch64-apple-darwin.tar.gz"
+
+[tools.pitchfork."platforms.windows-x64"]
+checksum = "sha256:6deaa784e3f3e846c5252d23d152f759052492e4cf5ca86bf66f53cddaf70a68"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.1.0/pitchfork-x86_64-pc-windows-msvc.zip"
+
 [[tools.pixi]]
 version = "0.65.0"
 backend = "github:prefix-dev/pixi"

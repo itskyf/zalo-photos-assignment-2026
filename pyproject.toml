@@ -7,19 +7,19 @@ requires-python = ">=3.13"
 authors = [{ name = "Kỳ", email = "40734986+itskyf@users.noreply.github.com" }]
 dependencies = [
   "accelerate~=1.13",
-  "dagshub~=0.6.8",
+  "dagshub~=0.6",
+  "datasets~=4.7",
   "fiftyone~=1.13",
   "mlflow~=3.10",
-  "torch~=2.9",
+  "torch~=2.10",
   "torchmetrics~=1.9",
+  "transformers~=5.3",
 ]
 
 [dependency-groups]
 dev = [
-  "datalayer-pycrdt>=0.12.17",
-  "jupyter-collaboration>=4.0.2",
-  "jupyter-mcp-server>=0.1.0",
-  "jupyterlab>=4.5.5",
+  "ipykernel~=7.2",
+  "ipywidgets~=8.1",
 ]
 
 [build-system]
