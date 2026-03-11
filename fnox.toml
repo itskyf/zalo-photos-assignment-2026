@@ -1,0 +1,7 @@
+[providers]
+age = { type = "age", recipients = [
+  "age10hhd36epzj6e3srle6dytrc4fe04g2wvqx8v22w92k784zk7ngfqfue0yu"
+] }
+
+[secrets]
+GEMINI_API_KEY = { provider = "age", value = "YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB4eWxFcWIwdFl1bG5KMkxLT05ZMlR6eFZxOUZsN2x3SG1EazVQZjBkenhBCi80elk2ZmdpZlBnRWZvZlM0dEEreEZtNXlqSVdMT1g4dDRrNDJDamFSdVkKLT4gTz54Ny1ncmVhc2UKCi0tLSBObFBUdkpFR1FkZHFHU1RLWGVNamFtcWlnQ3U5bUl5cFVNRDJFb1FWSEVzCvpisPe+oFWBHKKhid3XUS3rWkOV56CUIKK9rCODiUz9sKRl+fketHyNnXocUd8A0cMgo/0IahdTlvz7LoPNH2Ds1yiSSjyw" }

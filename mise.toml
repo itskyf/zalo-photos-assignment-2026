@@ -1,0 +1,17 @@
+[env]
+FNOX_AGE_KEY_FILE = "$HOME/.config/fnox/age.txt"
+
+[tools]
+age = "latest"
+fnox = "1.15.1"
+prek = { version = "latest", postinstall = "prek install" }
+uv = "latest"
+
+[tasks."jupyter:lab"]
+run = "uv run jupyter lab"
+
+[prepare.uv]
+auto = true
+
+[settings]
+env_shell_expand = true

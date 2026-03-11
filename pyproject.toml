@@ -1,0 +1,31 @@
+[project]
+name = "z-photos"
+version = "0.1.0"
+description = "Zalo Photos Assignment 2026"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "Kỳ", email = "40734986+itskyf@users.noreply.github.com" }]
+dependencies = [
+  "accelerate~=1.13",
+  "dagshub~=0.6.8",
+  "fiftyone~=1.13",
+  "mlflow~=3.10",
+  "torch~=2.9",
+  "torchmetrics~=1.9",
+]
+
+[dependency-groups]
+dev = [
+  "datalayer-pycrdt>=0.12.17",
+  "jupyter-collaboration>=4.0.2",
+  "jupyter-mcp-server>=0.1.0",
+  "jupyterlab>=4.5.5",
+]
+
+[build-system]
+requires = ["hatch-vcs", "hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0"
