@@ -13,13 +13,19 @@ dependencies = [
   "mlflow~=3.10",
   "torch~=2.10",
   "torchmetrics~=1.9",
+  "torchvision>=0.25.0",
   "transformers~=5.3",
 ]
 
 [dependency-groups]
 dev = [
+  "catppuccin-jupyterlab~=0.2",
+  "datalayer-pycrdt~=0.12",
   "ipykernel~=7.2",
   "ipywidgets~=8.1",
+  "jupyter-collaboration~=4.2",
+  "jupyter-mcp-server~=0.22",
+  "jupyterlab~=4.5",
 ]
 
 [build-system]
@@ -29,3 +35,6 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 fallback-version = "0.0.0"
+
+[tool.uv]
+override-dependencies = ["sse-starlette~=1.6"]
