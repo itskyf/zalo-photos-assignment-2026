@@ -11,10 +11,12 @@ dependencies = [
   "datasets~=4.7",
   "fiftyone~=1.13",
   "mlflow~=3.10",
+  "open-clip-torch~=3.3",
   "torch~=2.10",
+  "torch-uncertainty~=0.10",
   "torchmetrics~=1.9",
   "torchvision>=0.25.0",
-  "transformers~=5.3",
+  "transformers~=5.3"
 ]
 
 [dependency-groups]

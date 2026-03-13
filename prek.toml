@@ -1,10 +1,5 @@
 # Pre-processing
 [[repos]]
-repo = "https://github.com/crate-ci/typos"
-rev = "v1.44.0"
-hooks = [{ id = "typos", args = ["--force-exclude"] }]
-
-[[repos]]
 repo = "https://github.com/astral-sh/uv-pre-commit"
 rev = "0.10.9"
 hooks = [{ id = "uv-lock" }]

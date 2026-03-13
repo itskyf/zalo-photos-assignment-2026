@@ -1,38 +1,9 @@
 import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
 
 import fiftyone as fo
-from accelerate.utils import set_seed
-
-
-@dataclass
-class Config:
-    data_root: Path
-    seed: int
-
-    bronze_dir: Path = field(init=False)
-    silver_dir: Path = field(init=False)
-    gold_dir: Path = field(init=False)
-
-    def __post_init__(self):
-        """Tự động thiết lập đường dẫn và khởi tạo thư mục ngay khi Config được
-        tạo."""
-
-        # Thiết lập base cho 3 lớp Medallion
-        self.bronze_dir = self.data_root / "bronze"
-        self.silver_dir = self.data_root / "silver"
-        self.gold_dir = self.data_root / "gold"
-
-        self.silver_dir.mkdir(parents=True, exist_ok=True)
-        self.gold_dir.mkdir(parents=True, exist_ok=True)
-
-
-cfg = Config(data_root=Path("../data"), seed=42)
-
-# Reproducibility
-set_seed(cfg.seed)
 
 
 class CanonicalLabel(StrEnum):
@@ -100,7 +71,7 @@ RAW_TO_CANONICAL.update(
 )
 
 
-def build_dataset(name: str):
+def build_dataset(name: str, bronze_dir: Path):
     if name in fo.list_datasets():
         return fo.load_dataset(name)
 
@@ -112,7 +83,7 @@ def build_dataset(name: str):
 
     for split in ["train", "test"]:
         dataset.add_dir(
-            dataset_dir=cfg.bronze_dir / f"take_home_test/data_{split}",
+            dataset_dir=bronze_dir / f"take_home_test/data_{split}",
             dataset_type=fo.types.ImageClassificationDirectoryTree,
             label_field="raw_label",
             tags=[split],
@@ -130,6 +101,3 @@ def build_dataset(name: str):
     )
     dataset.compute_metadata()
     return dataset
-
-
-dataset = build_dataset()
