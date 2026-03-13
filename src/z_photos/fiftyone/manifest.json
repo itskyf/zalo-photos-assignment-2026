@@ -1,0 +1,32 @@
+{
+	"models": [
+		{
+			"base_name": "z-photos-siglip2-so400m-patch16-384",
+			"description": "SigLIP 2 extends the pretraining objective of SigLIP with prior, independently developed techniques into a unified recipe, for improved semantic understanding, localization, and dense features.",
+			"author": "Google",
+			"default_deployment_config_dict": {
+				"type": "z_photos.fiftyone.zoo.SigLIP2",
+				"config": {
+					"model_path": "google/siglip2-so400m-patch16-384"
+				}
+			},
+			"requirements": {
+				"packages": [
+					"huggingface-hub",
+					"transformers",
+					"torch",
+					"torchvision",
+					"accelerate"
+				]
+			},
+			"tags": [
+				"classification",
+				"logits",
+				"embeddings",
+				"torch",
+				"clip",
+				"zero-shot"
+			]
+		}
+	]
+}

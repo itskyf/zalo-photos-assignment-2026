@@ -71,7 +71,7 @@ RAW_TO_CANONICAL.update(
 )
 
 
-def build_dataset(name: str, bronze_dir: Path):
+def build_bronze_dataset(name: str, bronze_dir: Path):
     if name in fo.list_datasets():
         return fo.load_dataset(name)
 

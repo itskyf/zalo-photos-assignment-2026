@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from transformers import AutoProcessor, SiglipModel, TensorType
 from transformers.modeling_outputs import BaseModelOutputWithPooling
+from transformers.utils import PaddingStrategy
 from transformers.utils.import_utils import is_flash_attn_2_available
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ class SigLIP2Config(fout.TorchImageModelConfig):
             and len(d["classes"]) > 0
             and "output_processor_cls" not in d
         ):
-            d["output_processor_cls"] = "fiftyone.utils.torch.ClassifierOutputProcessor"
+            d["output_processor_cls"] = "z_photos.fiftyone.zoo.SigLIPOutputProcessor"
 
         super().__init__(d)
 
@@ -52,6 +53,45 @@ class SigLIP2Config(fout.TorchImageModelConfig):
 
         self.device_map = d.get("device_map", "auto")
         self.dtype = d.get("dtype", None)
+
+
+class SigLIPOutputProcessor:
+    """Custom output processor for SigLIP to handle numerical stability.
+
+    FiftyOne's default ClassifierOutputProcessor uses naive np.exp()
+    which overflows with SigLIP's unnormalized and highly scaled logits.
+    """
+
+    def __init__(self, classes):
+        self.classes = classes
+        self.store_logits = False
+
+    def __call__(self, logits, frame_size=None, confidence_thresh=None):
+        import fiftyone.core.labels as fol
+
+        # PyTorch softmax is numerically stable
+        probs = torch.softmax(logits, dim=-1).detach().cpu().numpy()
+        logits_np = logits.detach().cpu().numpy()
+
+        preds = []
+        predictions = np.argmax(probs, axis=1)
+        scores = np.max(probs, axis=1)
+
+        for prediction, score, logit in zip(
+            predictions, scores, logits_np, strict=False
+        ):
+            label = self.classes[prediction]
+            if confidence_thresh is not None and score < confidence_thresh:
+                classification = fol.Classification()
+            else:
+                classification = fol.Classification(
+                    label=label,
+                    confidence=float(score),
+                )
+                if self.store_logits:
+                    classification.logits = logit
+            preds.append(classification)
+        return preds
 
 
 class SigLIP2(fout.TorchImageModel, fom.PromptMixin):
@@ -75,6 +115,9 @@ class SigLIP2(fout.TorchImageModel, fom.PromptMixin):
         Args:
             config: A Config instance containing model parameters
         """
+        if isinstance(config, dict):
+            config = SigLIP2Config(config)
+
         # Initialize parent classes
         super().__init__(config)
 
@@ -128,9 +171,7 @@ class SigLIP2(fout.TorchImageModel, fom.PromptMixin):
 
         # Rebuild output processor if classes are provided
         if value is not None and len(value) > 0:
-            from fiftyone.utils.torch import ClassifierOutputProcessor
-
-            self._output_processor = ClassifierOutputProcessor(classes=value)
+            self._output_processor = SigLIPOutputProcessor(classes=value)
         else:
             self._output_processor = None
 
@@ -215,10 +256,9 @@ class SigLIP2(fout.TorchImageModel, fom.PromptMixin):
         # This ensures consistent preprocessing with native usage
         text_inputs = self.processor(
             text=prompts,
-            padding=True,
-            device=self.model.device,
+            padding=PaddingStrategy.MAX_LENGTH,
             return_tensors=TensorType.PYTORCH,
-        ).to(self.model.dtype)
+        ).to(self.model.device)
 
         # Get text features
         with torch.inference_mode():
@@ -274,10 +314,16 @@ class SigLIP2(fout.TorchImageModel, fom.PromptMixin):
         """
 
         # Process images
-        image_inputs = self.processor(
-            images=imgs, device=self.model.device, return_tensors=TensorType.PYTORCH
-        )
-        image_inputs = image_inputs.to(self.model.dtype)
+        image_inputs = self.processor(images=imgs, return_tensors=TensorType.PYTORCH)
+
+        # Move to device and cast to model dtype in one go
+        image_inputs = {
+            k: v.to(
+                self.model.device,
+                dtype=self.model.dtype if v.is_floating_point() else None,
+            )
+            for k, v in image_inputs.items()
+        }
 
         # Get image features
         with torch.inference_mode():
@@ -366,13 +412,14 @@ class SigLIP2(fout.TorchImageModel, fom.PromptMixin):
         with torch.no_grad():
             # Convert numpy arrays to torch tensors and move to device
             if isinstance(text_features, np.ndarray):
-                text_features = torch.from_numpy(text_features).to(self.device)
+                text_features = torch.from_numpy(text_features)
             if isinstance(image_features, np.ndarray):
-                image_features = torch.from_numpy(image_features).to(self.device)
+                image_features = torch.from_numpy(image_features)
 
-            # Ensure correct dtype
-            text_features = text_features.float()
-            image_features = image_features.float()
+            # Ensure correct device and dtype (MPS doesn't support float64)
+            # Use .to(device, dtype=...) to cast during move
+            text_features = text_features.to(self.model.device, dtype=torch.float32)
+            image_features = image_features.to(self.model.device, dtype=torch.float32)
 
             # NO NORMALIZATION - SigLIP2 embeddings are used as-is
 

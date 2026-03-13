@@ -12,6 +12,7 @@ dependencies = [
   "fiftyone~=1.13",
   "mlflow~=3.10",
   "open-clip-torch~=3.3",
+  "qdrant-client~=1.17",
   "torch~=2.10",
   "torch-uncertainty~=0.10",
   "torchmetrics~=1.9",
