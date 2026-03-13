@@ -16,7 +16,7 @@ This repo is for a 3-day take-home on image tag classification with noisy, ambig
 
 ## Working Rules
 
-- Use Google-style docstrings. Keep comments and docstrings minimal, clear, and strictly necessary.
+- Use Google-style docstrings. Keep comments, docstrings, and logging minimal, clear, and strictly necessary.
 - Use modern Python typing (`dict[str, int]`, `X | None`); avoid `Any` and hand-crafted attribute names.
 - Make small, reversible changes; avoid repo-wide reorganization unless necessary.
 - Keep reusable logic in modules/scripts; keep notebooks minimal and reproducible.
