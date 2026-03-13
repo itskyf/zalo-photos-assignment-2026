@@ -20,6 +20,7 @@ select = [
   "UP",  # pyupgrade
   "W",  # pycodestyle
 ]
+ignore = ["TRY003"]
 
 [lint.pydocstyle]
 convention = "google"

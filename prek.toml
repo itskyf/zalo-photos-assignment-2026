@@ -6,12 +6,12 @@ repo = "https://github.com/astral-sh/uv-pre-commit"
 rev = "0.10.9"
 hooks = [{ id = "uv-lock" }]
 
-[[repos]]
-repo = "https://github.com/kynan/nbstripout"
-rev = "0.9.1"
-hooks = [{ id = "nbstripout" }]
-
 # Python ecosystem
+[[repos]]
+repo = "https://github.com/srstevenson/nb-clean"
+rev = "4.0.1"
+hooks = [{ id = "nb-clean", args = ["--preserve-cell-outputs"] }]
+
 [[repos]]
 repo = "https://github.com/PyCQA/docformatter"
 rev = "v1.7.7"

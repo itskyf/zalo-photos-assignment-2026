@@ -7,7 +7,6 @@ import accelerate
 @dataclass
 class Config:
     data_root: Path
-    model_name_or_path: str
     seed: int
 
     bronze_dir: Path = field(init=False)
@@ -31,6 +30,5 @@ class Config:
 
 cfg = Config(
     data_root=Path("../data"),
-    model_name_or_path="google/siglip2-so400m-patch16-384",
     seed=42,
 )
