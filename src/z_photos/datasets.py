@@ -15,6 +15,31 @@ class CanonicalLabel(StrEnum):
     GATHERING = auto()
 
 
+class BronzeField(StrEnum):
+    RAW_LABEL = auto()
+    GROUND_TRUTH = auto()
+    METADATA = auto()
+    IS_EXACT_DUP = auto()
+    IS_NEAR_DUP = auto()
+    IS_LEAKY = auto()
+    RADIO_UNIQUENESS = auto()
+
+
+class SilverField(StrEnum):
+    SIGLIP2_EMB = auto()
+    ZS_SCORE = auto()
+    LR_OOF_SCORE = auto()
+    CLEAN_SCORE = auto()
+    SAMPLE_WEIGHT_PRELIM = auto()
+
+
+class GoldField(StrEnum):
+    KEEP_FOR_TRAIN = auto()
+    SAMPLE_WEIGHT = auto()
+    PRED_HEAD = auto()
+    PRED_FINAL = auto()
+
+
 @dataclass(frozen=True)
 class LabelMetadata:
     canonical_label: CanonicalLabel
@@ -78,25 +103,27 @@ def build_bronze_dataset(name: str, bronze_dir: Path):
     dataset = fo.Dataset(name=name, persistent=True)
     dataset.default_classes = list(RAW_TO_CANONICAL.values())
     dataset.add_sample_field(
-        "ground_truth", fo.EmbeddedDocumentField, embedded_doc_type=fo.Classification
+        BronzeField.GROUND_TRUTH,
+        fo.EmbeddedDocumentField,
+        embedded_doc_type=fo.Classification,
     )
 
     for split in ["train", "test"]:
         dataset.add_dir(
             dataset_dir=bronze_dir / f"take_home_test/data_{split}",
             dataset_type=fo.types.ImageClassificationDirectoryTree,
-            label_field="raw_label",
+            label_field=BronzeField.RAW_LABEL,
             tags=[split],
         )
 
-    raw_labels = dataset.values("raw_label.label")
+    raw_labels = dataset.values(f"{BronzeField.RAW_LABEL}.label")
 
-    dataset.delete_sample_field("raw_label")
-    dataset.add_sample_field("raw_label", fo.StringField)
-    dataset.set_values("raw_label", raw_labels)
+    dataset.delete_sample_field(BronzeField.RAW_LABEL)
+    dataset.add_sample_field(BronzeField.RAW_LABEL, fo.StringField)
+    dataset.set_values(BronzeField.RAW_LABEL, raw_labels)
 
     dataset.set_values(
-        "ground_truth.label",
+        f"{BronzeField.GROUND_TRUTH}.label",
         [RAW_TO_CANONICAL[label] for label in raw_labels],
     )
     dataset.compute_metadata()
