@@ -34,6 +34,7 @@ Capture the objective, audience, and what "done" looks like.
 2. Fill the notebook with small, runnable steps.
 Keep each code cell focused on one step.
 Add short markdown cells that explain the purpose and expected result.
+Preferred report pattern: compute a DataFrame, then present it with `display(df.style.format(...))`.
 Avoid large, noisy outputs when a short summary works.
 
 3. Apply the right pattern.

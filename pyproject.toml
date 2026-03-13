@@ -16,7 +16,8 @@ dependencies = [
   "torch-uncertainty~=0.10",
   "torchmetrics~=1.9",
   "torchvision>=0.25.0",
-  "transformers~=5.3"
+  "transformers~=5.3",
+  "umap-learn~=0.5",
 ]
 
 [dependency-groups]
