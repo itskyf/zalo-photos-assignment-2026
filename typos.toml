@@ -1,2 +1,8 @@
-[files]
-extend-exclude = ["*.ipynb"]
+[type.ipynb]
+extend-glob = ["*.ipynb"]
+
+[type.ipynb.extend-identifiers]
+fo = "fo"
+
+[type.py.extend-identifiers]
+fo = "fo"

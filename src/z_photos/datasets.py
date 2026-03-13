@@ -1,0 +1,135 @@
+import unicodedata
+from dataclasses import dataclass, field
+from enum import StrEnum, auto
+from pathlib import Path
+
+import fiftyone as fo
+from accelerate.utils import set_seed
+
+
+@dataclass
+class Config:
+    data_root: Path
+    seed: int
+
+    bronze_dir: Path = field(init=False)
+    silver_dir: Path = field(init=False)
+    gold_dir: Path = field(init=False)
+
+    def __post_init__(self):
+        """Tự động thiết lập đường dẫn và khởi tạo thư mục ngay khi Config được
+        tạo."""
+
+        # Thiết lập base cho 3 lớp Medallion
+        self.bronze_dir = self.data_root / "bronze"
+        self.silver_dir = self.data_root / "silver"
+        self.gold_dir = self.data_root / "gold"
+
+        self.silver_dir.mkdir(parents=True, exist_ok=True)
+        self.gold_dir.mkdir(parents=True, exist_ok=True)
+
+
+cfg = Config(data_root=Path("../data"), seed=42)
+
+# Reproducibility
+set_seed(cfg.seed)
+
+
+class CanonicalLabel(StrEnum):
+    BABY_PLAYING = auto()
+    LUNAR_NEW_YEAR = auto()
+    OTHER = auto()
+    NATURE = auto()
+    TREKKING = auto()
+    GATHERING = auto()
+
+
+@dataclass(frozen=True)
+class LabelMetadata:
+    canonical_label: CanonicalLabel
+    en_name: str
+    vi_name: str
+    raw_label: str
+
+
+LABEL_REGISTRY: tuple[LabelMetadata, ...] = (
+    LabelMetadata(
+        canonical_label=CanonicalLabel.BABY_PLAYING,
+        en_name="baby playing",
+        vi_name="em bé chơi",
+        raw_label="em_bé_chơi_verified",
+    ),
+    LabelMetadata(
+        canonical_label=CanonicalLabel.LUNAR_NEW_YEAR,
+        en_name="lunar new year",
+        vi_name="ngày tết",
+        raw_label="ngày_tết_verified",
+    ),
+    LabelMetadata(
+        canonical_label=CanonicalLabel.OTHER,
+        en_name="other",
+        vi_name="khác",
+        raw_label="other",
+    ),
+    LabelMetadata(
+        canonical_label=CanonicalLabel.NATURE,
+        en_name="nature",
+        vi_name="thiên nhiên",
+        raw_label="thiennhien",
+    ),
+    LabelMetadata(
+        canonical_label=CanonicalLabel.TREKKING,
+        en_name="trekking",
+        vi_name="trekking",
+        raw_label="trekking_verified",
+    ),
+    LabelMetadata(
+        canonical_label=CanonicalLabel.GATHERING,
+        en_name="gathering",
+        vi_name="tụ họp",
+        raw_label="tụ_họp_verified",
+    ),
+)
+
+RAW_TO_CANONICAL = {
+    metadata.raw_label: metadata.canonical_label.value for metadata in LABEL_REGISTRY
+}
+# Path in macOS may use NFD
+RAW_TO_CANONICAL.update(
+    {unicodedata.normalize("NFD", k): v for k, v in RAW_TO_CANONICAL.items()}
+)
+
+
+def build_dataset(name: str):
+    if name in fo.list_datasets():
+        return fo.load_dataset(name)
+
+    dataset = fo.Dataset(name=name, persistent=True)
+    dataset.default_classes = list(RAW_TO_CANONICAL.values())
+    dataset.add_sample_field(
+        "ground_truth", fo.EmbeddedDocumentField, embedded_doc_type=fo.Classification
+    )
+
+    for split in ["train", "test"]:
+        dataset.add_dir(
+            dataset_dir=cfg.bronze_dir / f"take_home_test/data_{split}",
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+            label_field="raw_label",
+            tags=[split],
+        )
+
+    raw_labels = dataset.values("raw_label.label")
+
+    dataset.delete_sample_field("raw_label")
+    dataset.add_sample_field("raw_label", fo.StringField)
+    dataset.set_values("raw_label", raw_labels)
+
+    dataset.set_values(
+        "ground_truth.label",
+        [RAW_TO_CANONICAL[label] for label in raw_labels],
+    )
+    dataset.compute_metadata()
+    return dataset
+
+
+dataset = build_dataset()
