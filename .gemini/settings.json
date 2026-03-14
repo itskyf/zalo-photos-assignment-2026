@@ -5,7 +5,8 @@
 			"type": "http"
 		},
 		"fiftyone": {
-			"command": "fiftyone-mcp"
+			"command": "uvx",
+			"args": ["--from", "fiftyone-mcp-server", "fiftyone-mcp"]
 		}
 	}
 }

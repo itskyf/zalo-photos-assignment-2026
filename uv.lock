@@ -1167,19 +1167,6 @@ wheels = [
 ]
 
 [[package]]
-name = "fiftyone-mcp-server"
-version = "0.1.7"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-  { name = "fiftyone" },
-  { name = "mcp" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/00/5c389b064d4fa48b15db3aef979b53e882abe67e6622359c5a1f68636b90/fiftyone_mcp_server-0.1.7.tar.gz", hash = "sha256:8a092eca3d7b934598dae63c5612dd0d49dcf3b1ed4d3de26e409db1927ef789", size = 28400, upload-time = "2026-03-06T15:04:06.332Z" }
-wheels = [
-  { url = "https://files.pythonhosted.org/packages/a6/93/0920d481c667038c60c409d06be071d8ac3c22cb5a1f95d427bb83a0cbf0/fiftyone_mcp_server-0.1.7-py3-none-any.whl", hash = "sha256:30112c9304a5b9fafd6c730fda4db9a200149e45d8b16e793e9c2fbe9f662d30", size = 36593, upload-time = "2026-03-06T15:04:05.153Z" },
-]
-
-[[package]]
 name = "filelock"
 version = "3.25.1"
 source = { registry = "https://pypi.org/simple" }
@@ -5831,7 +5818,6 @@ dependencies = [
 dev = [
   { name = "catppuccin-jupyterlab" },
   { name = "datalayer-pycrdt" },
-  { name = "fiftyone-mcp-server" },
   { name = "ipykernel" },
   { name = "ipywidgets" },
   { name = "jupyter-collaboration" },
@@ -5860,7 +5846,6 @@ requires-dist = [
 dev = [
   { name = "catppuccin-jupyterlab", specifier = "~=0.2" },
   { name = "datalayer-pycrdt", specifier = "~=0.12" },
-  { name = "fiftyone-mcp-server", specifier = ">=0.1.7" },
   { name = "ipykernel", specifier = "~=7.2" },
   { name = "ipywidgets", specifier = "~=8.1" },
   { name = "jupyter-collaboration", specifier = "~=4.2" },
