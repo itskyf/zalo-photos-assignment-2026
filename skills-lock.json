@@ -1,0 +1,40 @@
+{
+	"version": 1,
+	"skills": {
+		"fiftyone-code-style": {
+			"source": "voxel51/fiftyone-skills",
+			"sourceType": "github",
+			"computedHash": "23d6142f03ceb53062c129ee7cade8446960a0486c593b839baec334f33e0d49"
+		},
+		"fiftyone-dataset-export": {
+			"source": "voxel51/fiftyone-skills",
+			"sourceType": "github",
+			"computedHash": "13cde794a3f33b8d7402f8b91fe5fb405fae6a9d49a67cd0ba1698ff1858f62e"
+		},
+		"fiftyone-dataset-import": {
+			"source": "voxel51/fiftyone-skills",
+			"sourceType": "github",
+			"computedHash": "29c638008631e3d636afb2c9f8a5cb4916f2cff3ab6836912034c9d1aeff789f"
+		},
+		"fiftyone-dataset-inference": {
+			"source": "voxel51/fiftyone-skills",
+			"sourceType": "github",
+			"computedHash": "26b07ea5b36c92c6136146d04fb8661b325606fdc3ff3a42b96c03cfdd3117d6"
+		},
+		"fiftyone-embeddings-visualization": {
+			"source": "voxel51/fiftyone-skills",
+			"sourceType": "github",
+			"computedHash": "ec015f69f8c0845b69ce29cb432d7bab5f9b6a15489f83dc735924d34b9bf790"
+		},
+		"fiftyone-find-duplicates": {
+			"source": "voxel51/fiftyone-skills",
+			"sourceType": "github",
+			"computedHash": "78f682584f97a93e6493a1867706d42c4d9ff20c9dd7cf6306c4cb5bd9cf4a74"
+		},
+		"fiftyone-model-evaluation": {
+			"source": "voxel51/fiftyone-skills",
+			"sourceType": "github",
+			"computedHash": "74f2b927b363258027f99752bd6274b98b936480b250349ec7a4fbfe9cdd8220"
+		}
+	}
+}

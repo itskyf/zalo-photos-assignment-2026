@@ -25,6 +25,7 @@ dependencies = [
 dev = [
   "catppuccin-jupyterlab~=0.2",
   "datalayer-pycrdt~=0.12",
+  "fiftyone-mcp-server>=0.1.7",
   "ipykernel~=7.2",
   "ipywidgets~=8.1",
   "jupyter-collaboration~=4.2",

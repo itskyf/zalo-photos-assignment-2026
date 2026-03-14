@@ -1,0 +1,11 @@
+{
+	"mcpServers": {
+		"jupyter": {
+			"url": "http://127.0.0.1:4040/mcp",
+			"type": "http"
+		},
+		"fiftyone": {
+			"command": "fiftyone-mcp"
+		}
+	}
+}

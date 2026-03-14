@@ -5,6 +5,9 @@ _.fnox-env = { tools = true }
 [plugins]
 fnox-env = "https://github.com/jdx/mise-env-fnox"
 
+[tasks.lit]
+run = "lit.macos_arm64 serve --port=9379"
+
 [tools]
 age = "latest"
 fnox = "1.15.1"

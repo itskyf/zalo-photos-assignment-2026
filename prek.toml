@@ -1,4 +1,4 @@
-exclude = { glob = "lfs/**" }
+exclude = { glob = ["lfs/**", ".agents/skills/**"] }
 
 # Pre-processing
 [[repos]]
