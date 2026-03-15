@@ -40,6 +40,16 @@
 			"source": "voxel51/fiftyone-skills",
 			"sourceType": "github",
 			"computedHash": "74f2b927b363258027f99752bd6274b98b936480b250349ec7a4fbfe9cdd8220"
+		},
+		"mlflow-onboarding": {
+			"source": "mlflow/skills",
+			"sourceType": "github",
+			"computedHash": "8cb6dd03b2c9af91d5b173ac52285c19286a4a4fce3b143413a185be3a799fd5"
+		},
+		"searching-mlflow-docs": {
+			"source": "mlflow/skills",
+			"sourceType": "github",
+			"computedHash": "b493bd3becb75a2bed6a6cb385700b25fe5ca0656a0c505756af4873d4c237dd"
 		}
 	}
 }

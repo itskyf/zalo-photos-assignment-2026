@@ -1,5 +1,7 @@
 # Zalo Photos Assignment 2026
 
+> Note: This isn't a traditional scientific report format. **I wrote this as a story**, focusing on the why behind the architecture, the real-world trade-offs, and the actual value delivered. **I manually bold information that are important.** I hope you enjoy the read!
+
 ## 0. Executive memo: what the data says, what I chose, and why it is the safest 3-day decision
 
 **The Problem**: While the benchmark expects a clean single-label classification, the real-world dataset is tiny (~300 samples) and inherently constrained by semantic ambiguity and label noise.
@@ -57,11 +59,11 @@ Beyond imbalance, the dataset contains critical structural flaws:
 | Near Duplicates | 17 | 5.3% | C-RADIOv4, threshold=0.1 |
 | Leaky Test Samples | 10 | 16.7%* | Test samples too similar to Train (Data Leakage) |
 
-**Image 1:** Demonstrating a Leaky Split. This example also illustrates Semantic Ambiguity (e.g., an image perfectly fitting both `gathering` and `lunar_new_year`)
-
 | `data_train/tụ_họp_verified/0346_d79805bc0361.png` | `data_test/ngày_tết_verified/0346_d79805bc0361.png` |
 | :---: | :---: |
 | ![Train Image](./lfs/images/leaky/test_lunar_new_year_0346_d79805bc0361.png) | ![Test Image](lfs/images/leaky/train_gathering_0346_d79805bc0361.png) |
+
+**Image 1:** Demonstrating a Leaky Split. This example also illustrates Semantic Ambiguity (e.g., an image perfectly fitting both `gathering` and `lunar_new_year`)
 
 These patterns change the problem. The goal is no longer about picking the strongest classifier, but designing the safest decision rule for messy, overlapping data.
 
@@ -91,7 +93,7 @@ Treating this as a mutually exclusive 6-class problem optimizes for the wrong ou
 
 | Component | Rationale for Selection |
 | --- | --- |
-| [SigLIP2](https://arxiv.org/abs/2502.14786) | Semantic overlap and multilingual cues matter more here than purely vision-focused features e.g. [DINOv3](https://arxiv.org/abs/2508.10104).|
+| [SigLIP2](https://arxiv.org/abs/2502.14786) | **Semantic overlap and multilingual cues** matter more here than purely vision-focused features e.g. [DINOv3](https://arxiv.org/abs/2508.10104).|
 | [CLIPCleaner](https://github.com/MrChenFeng/CLIPCleaner_ACMMM2024) | Hard filtering is too destructive for a ~300-sample dataset. Soft weighting mitigates label noise without sacrificing critical data mass. |
 | **K-fold / OOF** | A single validation split on tiny data yields highly unstable metrics. Out-of-fold scoring ensures robust, reliable model selection. |
 | **Linear head** | Stable, low-variance decision boundary on top of frozen embeddings, maximizing the 3-day ROI while remaining fully reproducible and easy to calibrate. |
@@ -169,8 +171,11 @@ To avoid the self-confirmation bias typical of standard confident-learning appro
 
 By combining these signals ($\alpha=0.4$), the resulting score is applied as a loss weight. Ambiguous samples exert less pull on the gradient, allowing the model to learn stable class boundaries without artificially shrinking the training volume.
 
+![clean-score-boxplot](./lfs/images/clean_score_boxplot.png)
+**Image 2:** CLIPCleaner-derived clean scores across classes. The `other` class shows the widest variance, confirming that it is the noisiest and least coherent semantic group, while `unlabeled` samples collapse near zero as expected.
+
 ![fiftyone-clip-cleaner](./lfs/images/51app_clean_score.jpeg)
-**Image 2: FiftyOne visualization of CLIPCleaner score sorted by clean_score (pink, loss weights), comparing ground_truth (green), zero-shot SigLIP2 predictions (dark blue), and the fine-tuned (cyan) to identify ambiguous samples.**
+**Image 3:** FiftyOne visualization of CLIPCleaner score sorted by clean_score (pink, loss weights), comparing ground_truth (green), zero-shot SigLIP2 predictions (dark blue), and the fine-tuned (cyan) to identify ambiguous samples.
 
 ### 10. Why `other` is handled as a reject-style outcome
 
@@ -204,57 +209,97 @@ Because the `other` class acts as a heterogeneous catch-all, its recall is inher
 
 ## Act IV: Evidence for the decision
 
-### 11. Evidence block A — Data evidence
+Instead of an exhaustive log of experiments, the following metrics and visual cues serve as targeted evidence. They demonstrate why the chosen decision framework is a more reliable approach for this specific data reality.
 
-- 1–3 visual/bảng mạnh nhất: counts, duplicates/leakage, embedding overlap
+### 11. Evidence block A: Data evidence
 
-### 12. Evidence block B — Decision evidence
+The structural flaws of the dataset dictate the modeling strategy. As previously outlined, **Table 1** (Class Distribution) and **Table 2** (Duplicates & Leakage) establish the severe constraints and noise present in the raw data. Furthermore, **Image 1** highlights the data leakage and semantic ambiguity natively present across splits.
 
-- baseline rất đơn giản
-- model chính
-- 1–3 ablation thật sự trả lời câu hỏi quan trọng
+To visually anchor this ambiguity:
+![fiftyone-compute_visualization](./lfs/images/embedding_overlap.jpeg)
+**Image 4**: FiftyOne visualization of embedding neighborhood, highlighting the severe semantic overlap between classes like `gathering` and `lunar_new_year`.
+
+This overlap confirms that relying purely on visual boundaries is insufficient; the model requires a strong, pre-aligned semantic prior over complex visual modeling.
+
+### 12. Evidence block B: Decision evidence
+
+The core philosophy is "less is more": establishing a stable baseline and introducing complexity only where it directly addresses a dataset flaw.
+
+As detailed in **Table 3** (Confusion Matrix) and **Table 4** (Per-class Performance), the supervised linear head effectively maps the frozen representations to the task constraints, achieving perfect recall on distinct classes (`nature`, `trekking`) while intentionally treating `other` as a calibrated rejection margin.
+
+**Table 5:** Zero-shot Baseline vs. Main System and Targeted Ablations
+
+| Configuration | Macro-F1 | Balanced Acc | Key Takeaway |
+| :--- | :---: | :---: | :--- |
+| Baseline: Zero-shot SigLIP2 | 0.8078 | 0.8657 | Strong semantic prior, but struggles with specific task boundaries. |
+| Ablation: Single Validation Split - [MLflow](https://dagshub.com/cykanp/zalo-photos-assignment-2026.mlflow/#/experiments/4/runs?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) | 0.7965 | 0.8570 | High variance; proves K-fold CV is strictly necessary for tiny data. |
+| Ablation: Without CLIPCleaner weighting - [MLflow](https://dagshub.com/cykanp/zalo-photos-assignment-2026.mlflow/#/experiments/3/runs?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) | **0.8406** | **0.8682** | Hard dropping or unweighted data amplifies label noise degradation. |
+| **Main System:** Frozen SigLIP2 + Weighted Linear Head - [MLflow](https://dagshub.com/cykanp/zalo-photos-assignment-2026.mlflow/#/experiments/1/runs?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) | *0.8213* | *0.8611* | Best performance; safely adapts boundaries without overfitting. |
+
+#### Ablation: Single Validation Split
+
+To measure how unstable a traditional **single validation split** can be on this tiny dataset, I simulated five runs where each split was used once as the validation set.
+
+| Simulated Split | Macro-F1 | Balanced Acc |
+| :--- | :---: | :---: |
+| Split 0 as validation | 0.8213 | 0.8778 |
+| Split 1 as validation | 0.7568 | 0.8444 |
+| Split 2 as validation | 0.7869 | 0.8348 |
+| Split 3 as validation | 0.7991 | 0.8500 |
+| Split 4 as validation | 0.8186 | 0.8778 |
+| **Mean ± Std** | 0.7965 ± 0.0236 | 0.8570 ± 0.0177 |
+| **Max - Min** | 0.0646 (6.46%) | 0.0430 (4.30%) |
+
+This ablation shows that if we rely on only one validation split, the reported performance can vary heavily depending on the initial data partition. In practice, the true Macro-F1 could fall anywhere between 0.7568 and 0.8213, a gap of 6.46%.
+
+For a dataset this small and noisy (<300 samples), a single split is therefore not reliable and introduces high variance. **This is exactly why K-fold cross-validation is necessary**: it provides a more stable and trustworthy estimate of whether the model truly generalizes across different regions of the data.
+
+#### Ablation: Without CLIPCleaner weighting
+
+Surprisingly, **the model without CLIPCleaner weighting performed slightly better** on the clean evaluation set (+1.9% Macro-F1). This suggests that for this specific tiny dataset (~260 samples), preserving the full gradient pull of every sample, even potentially noisy ones, might provide more "mass" for the linear head to define its boundaries, whereas soft-weighting might be slightly too conservative.
 
 ### 13. Failure modes, limitations, and evaluation context
 
-- failure archetypes
-- expected non-use / caution cases
-- giới hạn của kết luận do dataset nhỏ, noisy, ambiguous
+The pipeline is designed for graceful failure, **prioritizing transparency over forced confidence**.
+
+![high-confidence-errors](./lfs/images/top_high_confidence_errors.png)
+**Image 5:** Top high-confidence errors showcasing severe semantic overlap.
+
+The high-confidence errors are **not random**. They mostly happen between classes that look very similar, especially `gathering` and `lunar_new_year`. These images often contain the same visual cues, such as groups of people, food, and indoor meals.
+
+The `other` class causes the most trouble. It is a **catch-all class**, so it does not have one clear meaning. Because of that, when an `other` image contains strong cues like red decorations or festive scenes, the model often pushes it into a more specific class such as `lunar_new_year` with very high confidence. This shows a **bias in the single-label setup**, not a failure of the visual features.
+
+#### Specific failure cases analysis
+
+![baby_playing_toy](./lfs/images/errors/baby_playing_toy.png)
+Image 6: baby_playing_toy.png (GT: baby_playing, Pred: baby_playing). Both the annotator and model failed to distinguish between a real human and a toy replica.
+
+![no_baby](./lfs/images/errors/no_baby.png)
+Image 7: no_baby.png (GT: other, Pred: baby_playing). The model over-associates toys with playing babies, ignoring the absence of an actual subject.
+
+![style_cartoon](./lfs/images/errors/style_cartoon.png)
+Image 8: style_cartoon.png (GT: other, Pred: lunar_new_year). The model relies heavily on semantic cues (lanterns, family) and ignores the domain shift from real photos to graphics.
+
+Overall, these errors suggest that the dataset is closer to a **multi-label problem** than a strict single-label problem. A hard one-label decision is therefore not ideal. Better options would be **soft-label or multi-label training**, or at least **giving lower weight to ambiguous samples** during training.
+
+### System Limitations
+
+- Sample Size Constraints: 50-sample evaluation set is too small to claim absolute statistical significance; metrics serve as directional indicators rather than absolute capabilities.
+- Inherent Ambiguity: Real-world photo tagging is inherently multi-label. Forcing single-label metrics on ambiguous images penalizes the model for capturing valid secondary semantics.
 
 ### 14. Implementation and analysis discipline
 
-- FiftyOne cho audit / neighborhood / error triage
-- Transformers cho implementation path
-- reproducibility / fallback / calibration discipline
+Executing this within a 3-day constraint required strict engineering discipline, transitioning the workflow from ad-hoc notebooks to an auditable pipeline.
 
-<details>
+- [FiftyOne](https://docs.voxel51.com/) for EDA: the primary data layer for duplicate discovery, embedding visualization, and failure triage. It ensured that qualitative errors were systematically tagged rather than manually guessed.
+- [Hugging Face Transformers](https://huggingface.co/docs/transformers/index): Chosen over [open_clip](https://github.com/mlfoundations/open_clip) to minimize experimentation friction. For a tightly scoped 6-class task, heavy reliance on prompt engineering (open_clip's zero-shot classification with [`OPENAI_IMAGENET_TEMPLATES`](https://github.com/mlfoundations/open_clip/blob/main/src/open_clip/zero_shot_metadata.py)) can add noise rather than improve performance. Transformers provides a cleaner, more reproducible pipeline for extracting raw embeddings for the linear head, with greater flexibility and less boilerplate.
+- [DagsHub MLflow](https://dagshub.com/docs/integration_guide/mlflow_tracking/) for experiment tracking: ensured full reproducibility of metrics, models, and artifacts (like confusion matrices).
+- **AI-Assisted Workflow:** AI agents were utilized for code scaffolding and research ideation, accelerating the engineering cycle while ensuring all analytical decisions remained strictly verified, auditable, and data-driven.
 
-<summary>WIP</summary>
+## Future works
 
-## Act V: What I would ship in 3 days
+- Use [astra-vision/ProLIP](https://github.com/astra-vision/ProLIP) for ambiguity-aware learning: ProLIP may better handle overlapping classes by modeling image–text matching in a softer, more flexible way, instead of forcing one hard label too early.
 
-### 16. What I would ship — and where I would be cautious
+- Treat `other` as a residual class: Instead of learning `other` as a normal class, future work should predict it only when no specific class is confident enough. This fits its role as a catch-all category much better.
 
-- đúng 1 pipeline tôi sẽ ship
-- vì sao nó hợp bài test và hợp production mindset
-
-### 17. Rejected but reviewed options
-
-- chỉ 2–4 hướng đáng nhắc
-- mỗi hướng 1 câu: vì sao không chọn trong 3 ngày
-
-### 18. Highest-ROI next steps
-
-- targeted relabeling
-- hard negatives / data expansion
-- projector-only adaptation / complementary encoder nếu có thêm thời gian
-
-## Appendix A — Execution under a 3-day constraint
-
-- Day 0 / Day 1–2 / Day 3 ở mức rất ngắn
-
-## Appendix B — AI-assisted workflow and reproducibility note
-
-- AI agents hỗ trợ research/code scaffolding
-- mọi quyết định, kiểm chứng, kết luận đều được tự kiểm và chịu trách nhiệm
-
-</details>
+- Handle out-of-domain and style errors explicitly: Cases like toys being mistaken for real babies (**Image 6**, **Image 7**) or illustrations being mistaken for real photos (**Image 8**) show a vulnerability to domain shifts. This could be mitigated with style augmentation, a style-aware branch, or explicitly adding negative prompts (e.g., "cartoon", "illustration", "toy") to the zero-shot evaluation to help the model distinguish between content and visual style.
