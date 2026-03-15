@@ -57,7 +57,7 @@ Beyond imbalance, the dataset contains critical structural flaws:
 | Near Duplicates | 17 | 5.3% | C-RADIOv4, threshold=0.1 |
 | Leaky Test Samples | 10 | 16.7%* | Test samples too similar to Train (Data Leakage) |
 
-**Image 1:** Demonstrating a Leaky Split. This example also illustrates Semantic Ambiguity (e.g., an image perfectly fitting both 'gathering' and 'lunar_new_year')
+**Image 1:** Demonstrating a Leaky Split. This example also illustrates Semantic Ambiguity (e.g., an image perfectly fitting both `gathering` and `lunar_new_year`)
 
 | `data_train/tụ_họp_verified/0346_d79805bc0361.png` | `data_test/ngày_tết_verified/0346_d79805bc0361.png` |
 | :---: | :---: |
@@ -76,27 +76,25 @@ Treating this as a mutually exclusive 6-class problem optimizes for the wrong ou
 
 ## Act II: Reframing the problem in product context
 
-### 4. Intended use, benchmark constraint, and non-use
+### 4. Task reframing: from clean classification to ambiguity-aware decision-making
 
-- Benchmark là single-label.
-- Final inference phải CLIP-compatible.
-- Đây là bài semantic image classification thực chiến, không phải demo thuần research.
+- While the final output must remain strictly single-label to satisfy the benchmark, training and error analysis must embrace the dataset's inherent ambiguity. The problem is practically **semantic retrieval + calibrated decision-making** rather than plain closed-set classification.
+- `other` is a residual, not a concept: Instead of treating `other` as a compact semantic cluster, it is modeled as a reject-style outcome for out-of-distribution or ambiguous samples.
 
-### 5. Task reframing: from clean classification to ambiguity-aware decision-making
+### 5. Design principles under a 3-day constraint
 
-- Giữ benchmark single-label, nhưng training/evaluation phải phản ánh ambiguity thật của dữ liệu.
-- `other` được xem là residual / reject-style outcome.
+- Prefer strong pretrained representations over end-to-end tuning. In a severely constrained dataset, establishing a stable feature space for photo tagging is much safer than risking overfitting.
+- Let actual data realities (semantic overlap between tags) dictate model and loss design. Data-centric fixes yield a higher ROI than architectural complexity.
+- Treat uncertainty, and failure analysis as core features. The 3-day goal is to deliver a reproducible, robust tagging logic, rather than a brittle model over-engineered solely for a leaderboard.
 
-### 6. Design principles under a 3-day constraint
+### 6. Why this method fits the data, the constraint, and the product context
 
-- Ưu tiên representation mạnh hơn end-to-end tuning.
-- Ưu tiên data-centric fixes hơn complexity.
-- Ưu tiên pipeline có thể giải thích, reproducible, ship được.
-
-### 7. Why this method fits the data, the constraint, and the product context
-
-- SigLIP2 / Transformers / CLIPCleaner / K-fold / calibration được chọn vì hợp dữ liệu và timeline.
-- Các phương án không chọn chỉ được nhắc ở mức trade-off ngắn gọn.
+| Component | Rationale for Selection |
+| --- | --- |
+| [SigLIP2 (so400m-patch16-384)](https://huggingface.co/google/siglip2-so400m-patch16-384) | Chosen over DINOv3, MetaCLIP2, and NAVER ProLIP because this task is driven more by semantic overlap and multilingual label cues than by purely vision-only dense features. The So400m variant provides the best quality-to-cost ratio for a strict 3-day timeline. |
+| [CLIPCleaner](https://github.com/MrChenFeng/CLIPCleaner_ACMMM2024) | Hard filtering is too destructive for a ~300-sample dataset. Soft weighting mitigates label noise without sacrificing critical data mass. |
+| **K-fold / OOF** | A single validation split on tiny data yields highly unstable metrics. Out-of-fold scoring ensures robust, reliable model selection. |
+| **Linear head** | Stable, low-variance decision boundary on top of frozen embeddings, maximizing the 3-day ROI while remaining fully reproducible and easy to calibrate. |
 
 ## Act III: The chosen system
 
