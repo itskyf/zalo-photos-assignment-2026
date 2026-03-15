@@ -6,7 +6,7 @@
 
 **The Problem**: While the benchmark expects a clean single-label classification, the real-world dataset is tiny (~300 samples) and inherently constrained by semantic ambiguity and label noise.
 
-**The Decision**: I implemented a data-centric pipeline utilizing a frozen CLIP-family encoder (SigLIP2) combined with an offline noise-weighted linear head, handling the "other" class as a reject-style residual outcome.
+**The Decision**: I implemented a data-centric pipeline utilizing a frozen CLIP-family encoder (SigLIP2) combined with an offline noise-weighted linear head, handling the `other` class as a reject-style residual outcome.
 
 **Why It Matters**: For a tiny dataset with highly ambiguous boundaries, complex modeling risks overfitting to label noise. A data-centric approach with frozen priors maximizes 3-day ROI by establishing a stable, reproducible baseline while exposing underlying data ambiguities.
 
@@ -14,7 +14,7 @@
 
 - Dataset & Data Quality: The raw dataset contains 321 images (261 train, 60 test). After removing 10 leaky test samples, the clean evaluation set contains 50 images.
 - Final Performance: Achieved a 0.8213 Macro-F1 and 0.8611 Balanced Accuracy.
-- Core Confusion: The primary source of error is the "other" class; because it acts as a heterogeneous catch-all, it frequently overlaps with specific semantic clusters (e.g., visually festive "other" images confidently misclassified as lunar_new_year).
+- Core Confusion: The primary source of error is the `other` class; because it acts as a heterogeneous catch-all, it frequently overlaps with specific semantic clusters (e.g., visually festive `other` images confidently misclassified as `lunar_new_year`).
 
 ## Act I: Let the data speak first
 
@@ -48,7 +48,7 @@ Prioritizing data over model capacity, EDA reveals this isn't a simple classific
 Beyond imbalance, the dataset contains critical structural flaws:
 
 - Duplicates & Leakage: [C-RADIOv4](https://arxiv.org/abs/2601.17237) embeddings revealed 5 duplicates and 10 leaky samples across the train-test split. Without correction, this leakage would artificially inflate scores, creating a false sense of generalization.
-- Semantic Overlap: There is severe semantic overlap between classes like trekking vs. nature (thiên nhiên), and lunar_new_year (ngày_tết) vs. gathering (tụ_họp).
+- Semantic Overlap: There is severe semantic overlap between classes like trekking vs. nature (thiên nhiên), and `lunar_new_year` (ngày_tết) vs. `gathering` (tụ_họp).
 
 **Table 2:** Short summary table of exact dup / near dup / leaky test
 
@@ -58,7 +58,7 @@ Beyond imbalance, the dataset contains critical structural flaws:
 | Near Duplicates | 17 | 5.3% | C-RADIOv4, threshold=0.1 |
 | Leaky Test Samples | 10 | 16.7%* | Test samples too similar to Train (Data Leakage) |
 
-| `data_train/tụ_họp_verified/0346_d79805bc0361.png` | `data_test/ngày_tết_verified/0346_d79805bc0361.png` |
+| data_train/tụ_họp_verified/0346_d79805bc0361.png | data_test/ngày_tết_verified/0346_d79805bc0361.png |
 | :---: | :---: |
 | ![Test Image](./lfs/images/leaky/test_lunar_new_year_0346_d79805bc0361.png) | ![Train Image](lfs/images/leaky/train_gathering_0346_d79805bc0361.png) |
 
@@ -71,7 +71,7 @@ These patterns change the problem. The goal is no longer about picking the stron
 Treating this as a mutually exclusive 6-class problem optimizes for the wrong outcome. A strict single-label classifier breaks down here for two core reasons:
 
 - **The `other` class is a residual:** It is not a compact semantic cluster but a heterogeneous catch-all. Forcing standard softmax classification forces the model to guess, often confidently misclassifying visually festive `other` images as `lunar_new_year`.
-- **Forced single-choice is unrealistic:** In real-world products, an image often belongs to multiple categories at once. For example, a photo of a family dinner is both gathering and lunar_new_year. Forcing a standard model to pick only one label forces it to make arbitrary, confusing guesses.
+- **Forced single-choice is unrealistic:** In real-world products, an image often belongs to multiple categories at once. For example, a photo of a family dinner is both `gathering` and `lunar_new_year`. Forcing a standard model to pick only one label forces it to make arbitrary, confusing guesses.
 
 > **The Takeaway:** The real problem is not "training the strongest model," but "designing a decision rule that safely handles noisy, ambiguous data and a heterogeneous residual class."
 
@@ -273,10 +273,10 @@ The `other` class causes the most trouble. It is a **catch-all class**, so it do
 #### Specific failure cases analysis
 
 ![no_baby](./lfs/images/errors/no_baby.png)
-Image 7: no_baby.png (GT: other, Pred: baby_playing). The model over-associates toys with playing babies, ignoring the absence of an actual subject.
+Image 7: no_baby.png (GT: `other`, Pred: `baby_playing`). The model over-associates toys with playing babies, ignoring the absence of an actual subject.
 
 ![style_cartoon](./lfs/images/errors/style_cartoon.png)
-Image 8: style_cartoon.png (GT: other, Pred: lunar_new_year). The model relies heavily on semantic cues (lanterns, family) and ignores the domain shift from real photos to graphics.
+Image 8: style_cartoon.png (GT: `other`, Pred: `lunar_new_year`). The model relies heavily on semantic cues (lanterns, family) and ignores the domain shift from real photos to graphics.
 
 Overall, these errors suggest that the dataset is closer to a **multi-label problem** than a strict single-label problem. A hard one-label decision is therefore not ideal. Better options would be **soft-label or multi-label training**, or at least **giving lower weight to ambiguous samples** during training.
 
@@ -306,6 +306,6 @@ Three lessons stood out during this project.
 
 ## Future Work
 
-- Use ambiguity-aware models such as [ProLIP](<https://github.com/astra-vision/Proramework> may handle overlapping classes better than a hard single-label setup.
+- Use ambiguity-aware models such as [ProLIP](https://github.com/astra-vision/Proramework) may handle overlapping classes better than a hard single-label setup.
 - Make `other` an explicit residual class: Instead of learning `other` as a regular class, predict it only when no specific class is confident enough.
 - Handle out-of-domain and style-based errors more explicitly: Future work should address cases such as toys vs. real babies, or illustrations vs. real photos, using style augmentation, style-aware modeling, or negative prompts.
