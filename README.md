@@ -12,8 +12,7 @@
 
 **Key Metrics & Data Realities:**
 
-- Dataset Constraints: ~261 training samples and 50 clean evaluation samples.
-- Data Quality Issues: Identified and handled 5 duplicate/near-duplicate images and 10 leaky samples across the train/test splits.
+- Dataset & Data Quality: The raw dataset contains 321 images (261 train, 60 test). After removing 10 leaky test samples, the clean evaluation set contains 50 images.
 - Final Performance: Achieved a 0.8213 Macro-F1 and 0.8611 Balanced Accuracy.
 - Core Confusion: The primary source of error is the "other" class; because it acts as a heterogeneous catch-all, it frequently overlaps with specific semantic clusters (e.g., visually festive "other" images confidently misclassified as lunar_new_year).
 
@@ -35,7 +34,7 @@ At first glance, the task is straightforward:
 
 Prioritizing data over model capacity, EDA reveals this isn't a simple classification task. We are navigating a data-constrained regime (~320 images) riddled with collection artifacts and composition quirks.
 
-**Table 1:** train/test class distribution
+**Table 1:** Raw train/test class distribution
 
 | Category | train | test | total | train_pct | test_pct |
 | --- | --- | --- | --- | --- | --- |
@@ -61,7 +60,7 @@ Beyond imbalance, the dataset contains critical structural flaws:
 
 | `data_train/tụ_họp_verified/0346_d79805bc0361.png` | `data_test/ngày_tết_verified/0346_d79805bc0361.png` |
 | :---: | :---: |
-| ![Train Image](./lfs/images/leaky/test_lunar_new_year_0346_d79805bc0361.png) | ![Test Image](lfs/images/leaky/train_gathering_0346_d79805bc0361.png) |
+| ![Test Image](./lfs/images/leaky/test_lunar_new_year_0346_d79805bc0361.png) | ![Train Image](lfs/images/leaky/train_gathering_0346_d79805bc0361.png) |
 
 **Image 1:** Demonstrating a Leaky Split. This example also illustrates Semantic Ambiguity (e.g., an image perfectly fitting both `gathering` and `lunar_new_year`)
 
@@ -179,9 +178,9 @@ By combining these signals ($\alpha=0.4$), the resulting score is applied as a l
 
 ### 10. Why `other` is handled as a reject-style outcome
 
-`other` is not modeled as a compact prototype class. Instead, prediction is driven by similarity to the five semantic classes, and `other` acts as a reject-style outcome when similarity is too weak or the top classes are too close. This matches the structure of the data better than forcing `other` into a single coherent cluster.
+Conceptually, `other` behaves like a residual class, even though the current implementation still uses a standard supervised head.
 
-**Table 3:** Confusion matrix of the ground truth (rows) against the model predictions (columns)
+**Table 3:** Confusion matrix on the *clean evaluation* set after removing leaky test images
 
 | GT \ Pred | baby_playing | gathering | lunar_new_year | nature | other | trekking | Total |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -193,7 +192,7 @@ By combining these signals ($\alpha=0.4$), the resulting score is applied as a l
 | trekking | 0 | 0 | 0 | 0 | 0 | 8 | 8 |
 | Total | 5 | 6 | 11 | 11 | 9 | 8 | 50 |
 
-**Table 4:** Per-class performance on the clean evaluation set
+**Table 4:** Per-class performance on the *clean evaluation set*
 
 | Category | Precision | Recall | F1-Score | Support |
 | :--- | :--- | :--- | :--- | :--- |
@@ -233,8 +232,8 @@ As detailed in **Table 3** (Confusion Matrix) and **Table 4** (Per-class Perform
 | :--- | :---: | :---: | :--- |
 | Baseline: Zero-shot SigLIP2 | 0.8078 | 0.8657 | Strong semantic prior, but struggles with specific task boundaries. |
 | Ablation: Single Validation Split - [MLflow](https://dagshub.com/cykanp/zalo-photos-assignment-2026.mlflow/#/experiments/4/runs?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) | 0.7965 | 0.8570 | High variance; proves K-fold CV is strictly necessary for tiny data. |
-| Ablation: Without CLIPCleaner weighting - [MLflow](https://dagshub.com/cykanp/zalo-photos-assignment-2026.mlflow/#/experiments/3/runs?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) | **0.8406** | **0.8682** | Hard dropping or unweighted data amplifies label noise degradation. |
-| **Main System:** Frozen SigLIP2 + Weighted Linear Head - [MLflow](https://dagshub.com/cykanp/zalo-photos-assignment-2026.mlflow/#/experiments/1/runs?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) | *0.8213* | *0.8611* | Best performance; safely adapts boundaries without overfitting. |
+| Ablation: Without CLIPCleaner weighting - [MLflow](https://dagshub.com/cykanp/zalo-photos-assignment-2026.mlflow/#/experiments/3/runs?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) | **0.8406** | **0.8682** | Removing CLIPCleaner weighting slightly improved scores here, suggesting soft weighting may be overly conservative for tiny data. |
+| **Main System:** Frozen SigLIP2 + Weighted Linear Head - [MLflow](https://dagshub.com/cykanp/zalo-photos-assignment-2026.mlflow/#/experiments/1/runs?searchFilter=&orderByKey=attributes.start_time&orderByAsc=false&startTime=ALL&lifecycleFilter=Active&modelVersionFilter=All+Runs&datasetsFilter=W10%3D) | *0.8213* | *0.8611* | Final system: selected for robustness to noisy labels over peak scores on this small evaluation set. |
 
 #### Ablation: Single Validation Split
 
@@ -258,9 +257,11 @@ For a dataset this small and noisy (<300 samples), a single split is therefore n
 
 Surprisingly, **the model without CLIPCleaner weighting performed slightly better** on the clean evaluation set (+1.9% Macro-F1). This suggests that for this specific tiny dataset (~260 samples), preserving the full gradient pull of every sample, even potentially noisy ones, might provide more "mass" for the linear head to define its boundaries, whereas soft-weighting might be slightly too conservative.
 
+CLIPCleaner was motivated as a safer noise-aware strategy, although on this very small clean evaluation set it did not improve the final score.
+
 ### 13. Failure modes, limitations, and evaluation context
 
-The pipeline is designed for graceful failure, **prioritizing transparency over forced confidence**.
+The pipeline is designed to make failure modes easy to inspect, even when the classifier is overconfident on ambiguous cases.
 
 ![high-confidence-errors](./lfs/images/top_high_confidence_errors.png)
 **Image 5:** Top high-confidence errors showcasing severe semantic overlap.
@@ -270,9 +271,6 @@ The high-confidence errors are **not random**. They mostly happen between classe
 The `other` class causes the most trouble. It is a **catch-all class**, so it does not have one clear meaning. Because of that, when an `other` image contains strong cues like red decorations or festive scenes, the model often pushes it into a more specific class such as `lunar_new_year` with very high confidence. This shows a **bias in the single-label setup**, not a failure of the visual features.
 
 #### Specific failure cases analysis
-
-![baby_playing_toy](./lfs/images/errors/baby_playing_toy.png)
-Image 6: baby_playing_toy.png (GT: baby_playing, Pred: baby_playing). Both the annotator and model failed to distinguish between a real human and a toy replica.
 
 ![no_baby](./lfs/images/errors/no_baby.png)
 Image 7: no_baby.png (GT: other, Pred: baby_playing). The model over-associates toys with playing babies, ignoring the absence of an actual subject.
@@ -296,10 +294,18 @@ Executing this within a 3-day constraint required strict engineering discipline,
 - [DagsHub MLflow](https://dagshub.com/docs/integration_guide/mlflow_tracking/) for experiment tracking: ensured full reproducibility of metrics, models, and artifacts (like confusion matrices).
 - **AI-Assisted Workflow:** AI agents were utilized for code scaffolding and research ideation, accelerating the engineering cycle while ensuring all analytical decisions remained strictly verified, auditable, and data-driven.
 
-## Future works
+## Reflections and Future Directions
 
-- Use [astra-vision/ProLIP](https://github.com/astra-vision/ProLIP) for ambiguity-aware learning: ProLIP may better handle overlapping classes by modeling image–text matching in a softer, more flexible way, instead of forcing one hard label too early.
+## Lessons Learned
 
-- Treat `other` as a residual class: Instead of learning `other` as a normal class, future work should predict it only when no specific class is confident enough. This fits its role as a catch-all category much better.
+Three lessons stood out during this project.
 
-- Handle out-of-domain and style errors explicitly: Cases like toys being mistaken for real babies (**Image 6**, **Image 7**) or illustrations being mistaken for real photos (**Image 8**) show a vulnerability to domain shifts. This could be mitigated with style augmentation, a style-aware branch, or explicitly adding negative prompts (e.g., "cartoon", "illustration", "toy") to the zero-shot evaluation to help the model distinguish between content and visual style.
+1. First, evaluation metrics should be defined early so that all ablations are compared under the same standard.
+1. Second, the project scope should also be defined early, because it strongly affects which model, training strategy, and trade-offs are worth choosing within a short timeline, and which ideas should be left for later work.
+1. Third, careful data analysis is essential: it not only reveals label noise and semantic overlap, but also prevents important failure modes such as out-of-domain and style-based errors from being missed.
+
+## Future Work
+
+- Use ambiguity-aware models such as [ProLIP](<https://github.com/astra-vision/Proramework> may handle overlapping classes better than a hard single-label setup.
+- Make `other` an explicit residual class: Instead of learning `other` as a regular class, predict it only when no specific class is confident enough.
+- Handle out-of-domain and style-based errors more explicitly: Future work should address cases such as toys vs. real babies, or illustrations vs. real photos, using style augmentation, style-aware modeling, or negative prompts.
