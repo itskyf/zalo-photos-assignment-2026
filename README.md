@@ -91,56 +91,144 @@ Treating this as a mutually exclusive 6-class problem optimizes for the wrong ou
 
 | Component | Rationale for Selection |
 | --- | --- |
-| [SigLIP2 (so400m-patch16-384)](https://huggingface.co/google/siglip2-so400m-patch16-384) | Chosen over DINOv3, MetaCLIP2, and NAVER ProLIP because this task is driven more by semantic overlap and multilingual label cues than by purely vision-only dense features. The So400m variant provides the best quality-to-cost ratio for a strict 3-day timeline. |
+| [SigLIP2](https://arxiv.org/abs/2502.14786) | Semantic overlap and multilingual cues matter more here than purely vision-focused features e.g. [DINOv3](https://arxiv.org/abs/2508.10104).|
 | [CLIPCleaner](https://github.com/MrChenFeng/CLIPCleaner_ACMMM2024) | Hard filtering is too destructive for a ~300-sample dataset. Soft weighting mitigates label noise without sacrificing critical data mass. |
 | **K-fold / OOF** | A single validation split on tiny data yields highly unstable metrics. Out-of-fold scoring ensures robust, reliable model selection. |
 | **Linear head** | Stable, low-variance decision boundary on top of frozen embeddings, maximizing the 3-day ROI while remaining fully reproducible and easy to calibrate. |
 
 ## Act III: The chosen system
 
-### 8. Representation choice
+### 7. Overview
 
-- Vì sao SigLIP2 là backbone chính.
-- Vì sao chọn biến thể cụ thể (ví dụ So400m) trong 3 ngày.
+**Mermaid diagram**: Data audit → denoise/weight → embedding extraction → decision rule / head → calibration → failure analysis
 
-### 9. Data-centric supervision
+```mermaid
+flowchart LR
+    %% 1. Data Audit
+    subgraph Data_Audit ["1. Data Audit"]
+        A1[Bronze Dataset] --> A2(Exact Duplicates<br/>MD5/SHA)
+        A2 --> A3(Near Duplicates & Leakage<br/>C-RADIOv4 Index)
+        A3 --> A4(Uniqueness & Representativeness)
+    end
 
-- CLIPCleaner-style weighting
-- ambiguity-aware supervision
-- K-fold / OOF logic nếu dùng
+    %% 2. Denoise / Weight
+    subgraph Denoise_Weight ["2. Denoise / Weight"]
+        A4 --> B1(CLIPCleaner<br/>Zero-shot Semantic Scoring)
+        B1 --> B2(Soft Weighting<br/>Mitigate Label Noise)
+        B2 --> B3[Silver / Gold Dataset]
+    end
+
+    %% 3. Embedding Extraction
+    subgraph Embedding_Extraction ["3. Embedding Extraction"]
+        B3 --> C1(Frozen Pretrained Backbone<br/>SigLIP2-so400m-patch16-384)
+        C1 --> C2(1152-dim Dense Embeddings)
+    end
+
+    %% 4. Decision Rule / Head
+    subgraph Decision_Rule ["4. Decision Rule / Head"]
+        C2 --> D1(Stratified 5-Fold CV)
+        D1 --> D2(Linear Classification Head<br/>PyTorch nn.Linear)
+        D2 --> D3(Class-Weighted & Sample-Weighted Loss<br/>Label Smoothing)
+    end
+
+    %% 5. Failure Analysis
+    subgraph Failure_Analysis ["5. Failure Analysis"]
+        D3 --> F1(FiftyOne Evaluation<br/>Classifications, Confusion Matrix)
+        F1 --> F2(Error Triage<br/>Semantic Ambiguity, Label Noise, Visual Outlier)
+        F2 --> F3(MLflow / DagsHub Tracking<br/>F1, Balanced Accuracy)
+    end
+
+    classDef stage fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    class A1,B3 stage;
+```
+
+### 8. Representation choice: SigLIP2 Backbone
+
+When dealing with a tiny and noisy dataset, representation quality is far more critical than end-to-end model capacity. Investing in a robust, pre-aligned feature space yields a higher return than blindly optimizing a complex model.
+
+#### Why SigLIP2?
+
+The core system uses frozen [google/siglip2-so400m-patch16-384](https://huggingface.co/google/siglip2-so400m-patch16-384) image embeddings. The so400m-patch16-384 variant was specifically selected because its static input resolution (384x384 rather than NaFlex) captures the fine-grained visual details necessary to disambiguate overlapping classes, while remaining lightweight enough to process rapidly within a strict 3-day constraint.
+
+#### Why NOT other state-of-the-art representations?
+
+- [DINOv3](https://github.com/facebookresearch/dinov3) and [C-RADIOv4](https://github.com/NVlabs/RADIO): excels at dense, purely vision-focused features (e.g., object boundaries, pixel-level details), the primary bottleneck in this dataset is *semantic ambiguity* (e.g., visually separating a general `gathering` from a `lunar_new_year` dinner). SigLIP2's contrastive image-text alignment is explicitly designed to separate high-level abstract concepts, making it far more suitable than a vision-only encoder.
+- [MetaCLIP2](https://github.com/facebookresearch/MetaCLIP/blob/main/docs/metaclip2.md): The dataset's raw labels and underlying concepts are deeply tied to Vietnamese cultural contexts (e.g., "ngày_tết", "tụ_họp"). SigLIP2 demonstrates highly robust multilingual text-to-image priors, providing a much more accurate zero-shot baseline for these specific non-English cues out of the box.
+- [NAVER ProLIP](https://github.com/naver-ai/prolip): While ProLIP's probabilistic modeling is *theoretically ideal for handling ambiguous boundaries and many-to-many relationships*, fine-tuning its complex projector layers on merely ~260 noisy training samples within a strict 3-day window introduces an unacceptable risk of overfitting.
+
+### 9. Data-centric supervision: CLIPCleaner
+
+[CLIPCleaner: Cleaning Noisy Labels with CLIP](https://arxiv.org/abs/2408.10012)
+
+Hard filtering is too destructive for a dataset of only ~300 samples. Instead of aggressively deleting suspicious samples, I use semantic scoring to down-weight likely noisy or ambiguous examples. This preserves scarce signal while reducing gradient damage from mislabeled data.
+
+To avoid the self-confirmation bias typical of standard confident-learning approaches, I implemented a soft-weighting pipeline inspired by [CLIPCleaner](https://github.com/MrChenFeng/CLIPCleaner_ACMMM2024). The sample reliability (`clean_score`) is derived by blending two independent signals:
+
+1. **Zero-shot Semantic Scoring:** A frozen SigLIP2 model evaluates image-text alignment using a bilingual prompt bank (English/Vietnamese) before any training occurs.
+2. **Out-of-Fold (OOF) Logistic Regression:** A lightweight linear classifier trained via a safe 5-fold cross-validation strategy on the visual features, ensuring the model does not score the same data it trained on.
+
+By combining these signals ($\alpha=0.4$), the resulting score is applied as a loss weight. Ambiguous samples exert less pull on the gradient, allowing the model to learn stable class boundaries without artificially shrinking the training volume.
+
+![fiftyone-clip-cleaner](./lfs/images/51app_clean_score.jpeg)
+**Image 2: FiftyOne visualization of CLIPCleaner score sorted by clean_score (pink, loss weights), comparing ground_truth (green), zero-shot SigLIP2 predictions (dark blue), and the fine-tuned (cyan) to identify ambiguous samples.**
 
 ### 10. Why `other` is handled as a reject-style outcome
 
-- Không coi `other` là một semantic cluster compact.
-- Quyết định `other` dựa trên uncertainty / margin / weak similarity.
+`other` is not modeled as a compact prototype class. Instead, prediction is driven by similarity to the five semantic classes, and `other` acts as a reject-style outcome when similarity is too weak or the top classes are too close. This matches the structure of the data better than forcing `other` into a single coherent cluster.
 
-### 11. Final pipeline in one diagram
+**Table 3:** Confusion matrix of the ground truth (rows) against the model predictions (columns)
 
-- Data audit → denoise/weight → embedding extraction → decision rule / head → calibration → failure analysis
+| GT \ Pred | baby_playing | gathering | lunar_new_year | nature | other | trekking | Total |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| baby_playing | 5 | 0 | 0 | 0 | 1 | 0 | 6 |
+| gathering | 0 | 4 | 1 | 0 | 0 | 0 | 5 |
+| lunar_new_year | 0 | 0 | 5 | 0 | 0 | 0 | 5 |
+| nature | 0 | 0 | 0 | 11 | 0 | 0 | 11 |
+| other | 0 | 2 | 5 | 0 | 8 | 0 | 15 |
+| trekking | 0 | 0 | 0 | 0 | 0 | 8 | 8 |
+| Total | 5 | 6 | 11 | 11 | 9 | 8 | 50 |
+
+**Table 4:** Per-class performance on the clean evaluation set
+
+| Category | Precision | Recall | F1-Score | Support |
+| :--- | :--- | :--- | :--- | :--- |
+| baby_playing | 1.000 | 0.833 | 0.909 | 6 |
+| gathering | 0.667 | 0.800 | 0.727 | 5 |
+| lunar_new_year | 0.455 | 1.000 | 0.625 | 5 |
+| nature | 1.000 | 1.000 | 1.000 | 11 |
+| other | 0.889 | *0.533* | 0.667 | 15 |
+| trekking | 1.000 | 1.000 | 1.000 | 8 |
+| Macro Avg | **0.835** | **0.861** | **0.821** | 50 |
+
+Because the `other` class acts as a heterogeneous catch-all, its recall is inherently weaker (0.53). As shown in the evaluation reports, high-confidence errors heavily skew toward `other` spilling over into the `lunar_new_year` and `gathering` classes, simply because festive decorative elements or social contexts trigger strong visual signals. Treating `other` strictly as a margin-based rejection acknowledges this ambiguity rather than forcing the model to guess.
 
 ## Act IV: Evidence for the decision
 
-### 12. Evidence block A — Data evidence
+### 11. Evidence block A — Data evidence
 
 - 1–3 visual/bảng mạnh nhất: counts, duplicates/leakage, embedding overlap
 
-### 13. Evidence block B — Decision evidence
+### 12. Evidence block B — Decision evidence
 
 - baseline rất đơn giản
 - model chính
 - 1–3 ablation thật sự trả lời câu hỏi quan trọng
 
-### 14. Failure modes, limitations, and evaluation context
+### 13. Failure modes, limitations, and evaluation context
 
 - failure archetypes
 - expected non-use / caution cases
 - giới hạn của kết luận do dataset nhỏ, noisy, ambiguous
 
-### 15. Implementation and analysis discipline
+### 14. Implementation and analysis discipline
 
 - FiftyOne cho audit / neighborhood / error triage
 - Transformers cho implementation path
 - reproducibility / fallback / calibration discipline
+
+<details>
+
+<summary>WIP</summary>
 
 ## Act V: What I would ship in 3 days
 
@@ -168,3 +256,5 @@ Treating this as a mutually exclusive 6-class problem optimizes for the wrong ou
 
 - AI agents hỗ trợ research/code scaffolding
 - mọi quyết định, kiểm chứng, kết luận đều được tự kiểm và chịu trách nhiệm
+
+</details>
